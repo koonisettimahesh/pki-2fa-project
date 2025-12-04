@@ -1,0 +1,2 @@
+* * * * * root python3 /app/scripts/log_2fa_cron.py >> /cron/totp.log 2>&1
+

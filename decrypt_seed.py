@@ -1,24 +1,18 @@
 import base64
-from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives import hashes
 
-def decrypt_seed():
-    # 1. Read encrypted seed
-    with open("encrypted_seed.txt", "r") as f:
-        encrypted_base64 = f.read().strip()
+def decrypt_seed(encrypted_seed_b64: str, private_key):
+    """
+    Decrypt base64-encoded encrypted seed using RSA/OAEP-SHA256.
+    Returns: 64-character hex seed string.
+    """
 
-    encrypted_bytes = base64.b64decode(encrypted_base64)
+    # 1. Base64 decode
+    encrypted_bytes = base64.b64decode(encrypted_seed_b64)
 
-    # 2. Load private key
-    with open("student_private.pem", "rb") as key_file:
-        private_key = serialization.load_pem_private_key(
-            key_file.read(),
-            password=None
-        )
-
-    # 3. Decrypt using RSA-OAEP-SHA256
-    decrypted_seed = private_key.decrypt(
+    # 2. RSA OAEP decrypt
+    decrypted = private_key.decrypt(
         encrypted_bytes,
         padding.OAEP(
             mgf=padding.MGF1(algorithm=hashes.SHA256()),
@@ -27,10 +21,14 @@ def decrypt_seed():
         )
     )
 
-    # 4. Save plaintext seed
-    with open("seed.txt", "wb") as f:
-        f.write(decrypted_seed)
+    # 3. Convert bytes → UTF-8 string
+    hex_seed = decrypted.decode("utf-8").strip()
 
-    print("Decryption complete. Seed saved to seed.txt")
+    # 4. Validate seed
+    if len(hex_seed) != 64:
+        raise ValueError("Seed must be 64 hex characters")
 
-decrypt_seed()
+    if not all(c in "0123456789abcdef" for c in hex_seed.lower()):
+        raise ValueError("Invalid hex seed")
+
+    return hex_seed
